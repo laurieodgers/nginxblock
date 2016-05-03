@@ -1,12 +1,14 @@
 # NginxBlock
 
-NginxBlock is a class for python to facilitate reading and writing of nginx config files. It was written work on any subset of an nginx configurations, such as those usually implemented within includes files. It may also work with config files of a similar structure but is untested. 
+NginxBlock is a class for python to facilitate reading and writing of nginx config files. It was written to work on any entire nginx configurations, and also subsets of an nginx configurations, such as those usually implemented within includes files. It may also work with config files of a similar structure but is untested. 
+
+Note that NginxBlock will only deal with one file at a time; include files are loaded in as attributes.
 
 ## Data Structure
 The data structure forms a recursive heirarchy of NginxBlock objects addressable by the order that they appear within the loaded file.
 ```
 NginxBlock()
-│   error_log = logs/error.log
+│   error_log[0] = logs/error.log
 │   pid[0] = logs/nginx.pid
 │
 └───http[0]
