@@ -1,5 +1,6 @@
 # The MIT License (MIT)
 # Copyright (c) 2016 Laurence Odgers
+# https://github.com/laurieodgers/nginxblock
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files 
 # (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge,
@@ -13,59 +14,79 @@
 # FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# Version 0.2
+
 from collections import defaultdict
 from collections import OrderedDict
 import re
 import json
+import os.path
 
 
 class NginxBlock:
+    filePath = None
     name = None
     value = None
     attrs = None
     blocks = None
 
     # constructor
-    def __init__(self):
+    def __init__(self, name = None, value = None, filePath = None):
+        self.name = name
+        self.value = value
+
+        # set the filepath of this block
+        self.filePath = filePath
         # set attrs and blocks as 2d dicts
         self.attrs = defaultdict(dict)
         self.blocks = defaultdict(dict)
     
     # allow attrs and blocks to be addressable without having to use their relevant dict names
     def __getattr__(self, key):
+        # if the key is an int then cast it to string
+        if (isinstance(key, int)):
+            key = str(key)
+        
         # look for attrs first
         if (key in self.attrs):
             return self.attrs[key]
         # and now blocks
         elif (key in self.blocks):
             return self.blocks[key]
-        
+    
     # opens a file and parses it recursively 
-    def openFile(self, filePath):
-        # sanity check
-        if (len(filePath) == 0):
+    def loadFile(self):
+        # sanity checks
+        if (self.filePath is None):
             return False
         
+        if (not os.path.isfile(self.filePath)):
+            return True
+        
+        # Clear the dicts
+        self.attrs = defaultdict(dict)
+        self.blocks = defaultdict(dict)
+        
         # open file
-        f = open(filePath, 'r')
+        f = open(self.filePath, 'r')
         
         # parse it
-        self.parse(f.read(), 0)
+        return self.parse(f.read(), 0)
     
     # saves the output of toString to file
-    def saveFile(self, filePath):
+    def saveFile(self):
         # sanity check
-        if (len(filePath) == 0):
+        if (self.filePath is None):
             return False
         
         # open file
-        f = open(filePath, 'w')
+        f = open(self.filePath, 'w')
         
         # save the data
         return f.write(self.toString())
     
     # adds an attribute
-    def addAttr(self, name, value):
+    def addAttr(self, name, value = None):
         # sanity checks
         if (len(name) == 0):
             return False
@@ -73,7 +94,7 @@ class NginxBlock:
         # use a number as a key
         index = len(self.attrs[name])
 
-        if (len(value) > 0):
+        if (value is not None):
             self.attrs[name][index] = value
         else:
             self.attrs[name][index] = None
@@ -81,25 +102,26 @@ class NginxBlock:
         return True
     
     # adds a block
-    def addBlock(self, name, value, block):
+    def addBlock(self, name, value = None, block = None):
         # sanity checks
         if (len(name) == 0):
             return False
         
         if (block is None):
-            return False
-        
+            # create a new block
+            block = NginxBlock(name, value)
+
         # check if a value was set
-        if (len(value) > 0):
-            # use the value as a key
-            self.blocks[name][value] = block
-            
-        else:
+        if (value is None) or (len(value) == 0):
             # use a number as a key
             index = len(self.blocks[name])
+
             # add the block
             self.blocks[name][index] = block
-    
+        else:
+            # use the value as a key
+            self.blocks[name][value] = block
+
     # converts this object to JSON
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
@@ -158,6 +180,7 @@ class NginxBlock:
         
         # loop over the lines
         for line in string.splitlines():
+            
             # clean up the line
             # remove any comments
             line = line.split('#', 1)[0]
@@ -223,3 +246,4 @@ class NginxBlock:
                 thisBlock=''
                 blockName = ''
                 blockValue = ''
+        return True
